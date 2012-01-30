@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<PreferenceCategory android:title="Preferences">
+
+		<ListPreference android:defaultValue="Not Present" android:key="resolution"
+			android:summary="Defines the camera resolution to be used throughout the application"
+			android:title="Camera Resolution"/>
+			
+		<ListPreference android:title="Picture Interval"
+			android:summary="Determines the time interval pictures are taken at"
+			android:key="interval" android:defaultValue="Not Present"
+			android:entries="@array/interval" android:entryValues="@array/intervalvalues" />
+
+	</PreferenceCategory>
+
+</PreferenceScreen>
