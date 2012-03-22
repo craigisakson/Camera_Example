@@ -1,6 +1,7 @@
 package com.runninghusky.spacetracker.camera.example;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.PreferenceActivity;
@@ -11,7 +12,7 @@ import android.view.KeyEvent;
  */
 public class Preferences extends PreferenceActivity {
 
-	/*
+	/**
 	 * Called when the activity is first created
 	 */
 	@Override
@@ -24,6 +25,8 @@ public class Preferences extends PreferenceActivity {
 		// calling activity for display of the camera sizes
 		String[] widths = getIntent().getStringArrayExtra("widths");
 		String[] heights = getIntent().getStringArrayExtra("heights");
+		String[] previewWidths = getIntent().getStringArrayExtra("pwidths");
+		String[] previewHeights = getIntent().getStringArrayExtra("pheights");
 
 		ListPreference cameraSizesList = (ListPreference) findPreference("resolution");
 		// Check to see if the resolution preference is in the preferences.xml
@@ -41,9 +44,26 @@ public class Preferences extends PreferenceActivity {
 			cameraSizesList.setEntryValues(entryValues);
 		}
 
+		ListPreference cameraPreviewSizesList = (ListPreference) findPreference("previewresolution");
+		// Check to see if the preview resolution preference is in the
+		// preferences.xml
+		// file
+		if (cameraPreviewSizesList != null) {
+			CharSequence entries[] = new String[previewWidths.length];
+			CharSequence entryValues[] = new String[previewWidths.length];
+			for (int i = 0; i < widths.length; i++) {
+				// Create the lists and list values from our passed in values
+				entries[i] = previewWidths[i] + " x " + previewHeights[i];
+				entryValues[i] = previewWidths[i] + ":" + previewHeights[i];
+			}
+			// Set the resolution preference to use the list and values
+			cameraPreviewSizesList.setEntries(entries);
+			cameraPreviewSizesList.setEntryValues(entryValues);
+		}
+
 	}
 
-	/*
+	/**
 	 * Called when key's are pressed
 	 */
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -55,6 +75,14 @@ public class Preferences extends PreferenceActivity {
 			finish();
 		}
 		return super.onKeyDown(keyCode, event);
+	}
+
+	/**
+	 * Prevents the activity from restarted on orientation change
+	 */
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
 	}
 
 }

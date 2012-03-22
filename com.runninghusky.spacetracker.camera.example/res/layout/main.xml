@@ -4,15 +4,9 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-    <LinearLayout
+    <SurfaceView
+        android:id="@+id/SurfaceViewPicture"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:orientation="vertical" >
-
-        <SurfaceView
-            android:id="@+id/SurfaceViewPicture"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent" />
-    </LinearLayout>
+        android:layout_height="fill_parent" />
 
 </LinearLayout>

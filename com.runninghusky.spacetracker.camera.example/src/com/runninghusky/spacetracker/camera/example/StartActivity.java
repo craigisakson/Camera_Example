@@ -23,7 +23,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -32,7 +31,6 @@ import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -69,12 +67,6 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 	/** The TAG. */
 	private String TAG = "camera_example";
 
-	/** The Constant DELAY in milliseconds. */
-	private static final int DELAY = 999999999;
-
-	/** The defined time out. */
-	int defTimeOut = 0;
-
 	/** The shared preferences. */
 	private SharedPreferences prefs;
 
@@ -97,19 +89,18 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		// Set pixel format to translucent
 		getWindow().setFormat(PixelFormat.TRANSLUCENT);
-		// Set no title for the window
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+		// Make application run in full screen
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+				WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+		// Don't allow the screen to timeout
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
 		setContentView(R.layout.main);
-		// Move the current system timeout to defTimeOut
-		defTimeOut = Settings.System.getInt(getContentResolver(),
-				Settings.System.SCREEN_OFF_TIMEOUT, DELAY);
-		// Change the current system timeout to our DELAY variable so
-		// the screen does not time out
-		Settings.System.putInt(getContentResolver(),
-				Settings.System.SCREEN_OFF_TIMEOUT, DELAY);
 
-		// Setupt the surface view
+		// Setup the surface view
 		mSurfaceView = (SurfaceView) findViewById(R.id.SurfaceViewPicture);
 		mSurfaceHolder = mSurfaceView.getHolder();
 		mSurfaceHolder.addCallback(this);
@@ -132,6 +123,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		Toast.makeText(ctx, "Tap the screen to start snapping...",
 				Toast.LENGTH_SHORT).show();
 
+		// Preferences used for delay and resolution
 		prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 
 	}
@@ -169,7 +161,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		}
 	};
 
-	/*
+	/**
 	 * The method called when the new thread was spun off
 	 */
 	@Override
@@ -186,15 +178,13 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 			try {
 				// This stops the thread for the sleep interval
 				Thread.sleep(sleepInterval);
-				if (shouldTakePics) {
-					if (notTakingPic) {
-						try {
-							// Take the picture
-							takePicture();
-						} catch (Exception e) {
-							Toast.makeText(ctx, "Error occurred...",
-									Toast.LENGTH_SHORT).show();
-						}
+				if (shouldTakePics && notTakingPic) {
+					try {
+						// Take the picture
+						takePicture();
+					} catch (Exception e) {
+						Toast.makeText(ctx, "Error occurred...",
+								Toast.LENGTH_SHORT).show();
 					}
 				} else {
 					return;
@@ -215,16 +205,20 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		}
 	};
 
-	/*
-	 * Surface changed method called when the surface view is changed
+	/**
+	 * This is called immediately after any structural changes (format or size)
+	 * have been made to the surface. You should at this point update the
+	 * imagery in the surface. This method is always called at least once, after
+	 * surfaceCreated(SurfaceHolder).
 	 * 
-	 * @param holder The surface holder
-	 * 
-	 * @param format Format for the surface
-	 * 
-	 * @param w The width
-	 * 
-	 * @param h The height
+	 * @param holder
+	 *            The surface holder
+	 * @param format
+	 *            Format for the surface
+	 * @param w
+	 *            The width
+	 * @param h
+	 *            The height
 	 */
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
@@ -235,6 +229,8 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 
 		String sizePref = "";
 		sizePref = prefs.getString("resolution", "Not Present");
+		String prevSizePref = "";
+		prevSizePref = prefs.getString("previewresolution", "Not Present");
 
 		Camera.Parameters p = mCamera.getParameters();
 		// If no camera size is found in the shared preferences get the largest
@@ -251,15 +247,25 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		} else {
 			// Set to the users specified camera size
 			String[] userResolution = sizePref.split(":");
-			p.setPictureSize(Integer.valueOf(userResolution[0]), Integer
-					.valueOf(userResolution[1]));
+			p.setPictureSize(Integer.valueOf(userResolution[0]),
+					Integer.valueOf(userResolution[1]));
 		}
 
-		// Use the first supported preview size
-		List<Size> previewSizes = p.getSupportedPreviewSizes();
-		p.setPreviewSize(previewSizes.get(0).width, previewSizes.get(0).height);
+		// If no preview size is found in the shared preferences get the first
+		// supported size and set the preview size to that size
+		if (prevSizePref.equals("Not Present")) {
+			// Use the first supported preview size
+			List<Size> previewSizes = p.getSupportedPreviewSizes();
+			p.setPreviewSize(previewSizes.get(0).width,
+					previewSizes.get(0).height);
+		} else {
+			// Set to the users specified preview size
+			String[] userResolution = prevSizePref.split(":");
+			p.setPreviewSize(Integer.valueOf(userResolution[0]),
+					Integer.valueOf(userResolution[1]));
+		}
 
-		// Set the foucs mode to infinity
+		// Set the focus mode to infinity
 		List<String> focusModes = p.getSupportedFocusModes();
 		for (String str : focusModes) {
 			if (str.equalsIgnoreCase("infinity")) {
@@ -285,7 +291,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		mPreviewRunning = true;
 	}
 
-	/*
+	/**
 	 * On surface created
 	 */
 	@Override
@@ -293,17 +299,17 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		mCamera = Camera.open();
 	}
 
-	/*
+	/**
 	 * On surface destroyed
 	 */
 	@Override
 	public void surfaceDestroyed(SurfaceHolder arg0) {
-		Settings.System.putInt(getContentResolver(),
-				Settings.System.SCREEN_OFF_TIMEOUT, defTimeOut);
-
-		mCamera.stopPreview();
-		mPreviewRunning = false;
-		mCamera.release();
+		try {
+			mCamera.stopPreview();
+			mPreviewRunning = false;
+			mCamera.release();
+		} catch (Exception e) {
+		}
 	}
 
 	/** Handles data for jpeg picture. */
@@ -347,7 +353,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		}
 	};
 
-	/*
+	/**
 	 * Prevents the activity from restarted on orientation change
 	 */
 	@Override
@@ -355,7 +361,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		super.onConfigurationChanged(newConfig);
 	}
 
-	/*
+	/**
 	 * Called when the view is attached to a window.
 	 */
 	@Override
@@ -365,7 +371,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		super.onAttachedToWindow();
 	}
 
-	/*
+	/**
 	 * Called when a key is pressed
 	 */
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -404,7 +410,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 
 	}
 
-	/*
+	/**
 	 * The final call you receive before your activity is destroyed.
 	 */
 	@Override
@@ -414,15 +420,15 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 			// Evo 3d camera not releasing on surface destroy...
 			mCamera.release();
 		} catch (Exception e) {
-
 		}
 	}
 
-	/* Creates the menu items */
-	/*
-	 * (non-Javadoc)
+	/**
+	 * Runs when a menu item is created
 	 * 
-	 * @see android.app.Activity#onCreateOptionsMenu(android.view.Menu)
+	 * @param menu
+	 *            the menu
+	 * @return boolean
 	 */
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -431,7 +437,7 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 		return true;
 	}
 
-	/*
+	/**
 	 * Initialize the contents of the Activity's standard options menu.
 	 */
 	@Override
@@ -448,13 +454,26 @@ public class StartActivity extends Activity implements SurfaceHolder.Callback,
 				heights.add(String.valueOf(s.height));
 			}
 
+			// Get the supported widths and heights for preview to send to the
+			// preferences activity
+			List<String> previewWidths = new ArrayList<String>();
+			List<String> previewHeights = new ArrayList<String>();
+			for (Size s : p.getSupportedPreviewSizes()) {
+				previewWidths.add(String.valueOf(s.width));
+				previewHeights.add(String.valueOf(s.height));
+			}
+
 			// Setup new intent to get us to the preferences activity. After the
 			// activity is fired off, finish our current activity
 			Intent myIntent = new Intent(StartActivity.this, Preferences.class);
-			myIntent.putExtra("widths", widths
-					.toArray(new String[widths.size()]));
-			myIntent.putExtra("heights", heights.toArray(new String[heights
-					.size()]));
+			myIntent.putExtra("widths",
+					widths.toArray(new String[widths.size()]));
+			myIntent.putExtra("heights",
+					heights.toArray(new String[heights.size()]));
+			myIntent.putExtra("pwidths",
+					widths.toArray(new String[previewWidths.size()]));
+			myIntent.putExtra("pheights",
+					heights.toArray(new String[previewHeights.size()]));
 			StartActivity.this.startActivity(myIntent);
 			finish();
 			break;
